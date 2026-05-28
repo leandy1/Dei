@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { motion, AnimatePresence } from 'framer-motion';
+import { supabase } from './supabaseClient';
 
 /* ─────────────────────────────────────────────────────────
    Rose petal — extruded bezier curve, vertex-curved
@@ -21,8 +22,8 @@ function makePetal(color, scale = 1) {
     pos.setZ(i, pos.getZ(i) + c * 0.12 * scale);
   }
   geo.computeVertexNormals();
-  return new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
-    color, side: THREE.DoubleSide, roughness: 0.3, metalness: 0.2, 
+  return new THREE.Mesh(geo, new THREE.MeshToonMaterial({
+    color, side: THREE.DoubleSide,
   }));
 }
 
@@ -41,7 +42,7 @@ function makeRose(baseColor) {
   ]);
   group.add(new THREE.Mesh(
     new THREE.TubeGeometry(stemPath, 12, 0.025, 8, false),
-    new THREE.MeshStandardMaterial({ color: 0x2d5a1b, roughness: 0.3, metalness: 0.2, })
+    new THREE.MeshToonMaterial({ color: 0x2d5a1b, })
   ));
 
   // Leaves
@@ -52,7 +53,7 @@ function makeRose(baseColor) {
     s.bezierCurveTo(0, 0.16, -0.04, 0.08, 0, 0);
     const leaf = new THREE.Mesh(
       new THREE.ShapeGeometry(s),
-      new THREE.MeshStandardMaterial({ color: 0x2d6a1a, side: THREE.DoubleSide, roughness: 0.3, metalness: 0.2, })
+      new THREE.MeshToonMaterial({ color: 0x2d6a1a, side: THREE.DoubleSide, })
     );
     leaf.position.y = 0.35 + l * 0.15;
     leaf.rotation.y = l * Math.PI + Math.PI / 3;
@@ -63,7 +64,7 @@ function makeRose(baseColor) {
   // Sepal
   const sepal = new THREE.Mesh(
     new THREE.ConeGeometry(0.11, 0.12, 8),
-    new THREE.MeshStandardMaterial({ color: 0x2d5a1b, roughness: 0.3, metalness: 0.2, })
+    new THREE.MeshToonMaterial({ color: 0x2d5a1b, })
   );
   sepal.position.y = 0.87;
   group.add(sepal);
@@ -88,7 +89,7 @@ function makeRose(baseColor) {
   // Central rosette
   const rosette = new THREE.Mesh(
     new THREE.ConeGeometry(0.035, 0.065, 8),
-    new THREE.MeshStandardMaterial({ color: dark, roughness: 0.3, metalness: 0.2, })
+    new THREE.MeshToonMaterial({ color: dark, })
   );
   rosette.position.y = 0.965;
   rosette.rotation.x = Math.PI;
@@ -106,7 +107,7 @@ function makeMoon(scene) {
 
   // Moon sphere
   const moonGeo = new THREE.SphereGeometry(4.5, 32, 32);
-  const moonMat = new THREE.MeshStandardMaterial({
+  const moonMat = new THREE.MeshToonMaterial({
     color: 0xf5f0e8,
     roughness: 0.9,
     metalness: 0.0,
@@ -163,8 +164,11 @@ function makeMoon(scene) {
   scene.add(moonLight.target);
 
   // Soft ambient moonlight haze
-  const moonAmbient = new THREE.HemisphereLight(0x8899ff, 0x112200, 1.5);
-  scene.add(moonAmbient);\n  const fillLight = new THREE.DirectionalLight(0x443366, 0.8);\n  fillLight.position.set(20, 10, 20);\n  scene.add(fillLight);
+  const moonAmbient = new THREE.HemisphereLight(0x5588ff, 0x01081a, 2.0);
+  scene.add(moonAmbient);
+  const fillLight = new THREE.DirectionalLight(0x1a5599, 1.5);
+  fillLight.position.set(20, 10, 20);
+  scene.add(fillLight);
 
   return { moonGroup, moonLight };
 }
@@ -174,7 +178,7 @@ function makeMoon(scene) {
 ───────────────────────────────────────────────────────── */
 function makeCake() {
   const cakeGroup = new THREE.Group();
-  const frostingWhite = new THREE.MeshStandardMaterial({ color: 0xfdf8f0, roughness: 0.3, metalness: 0.2, });
+  const frostingWhite = new THREE.MeshToonMaterial({ color: 0xfdf8f0, });
 
   const tiers = [
     { r: 1.5, h: 0.85, y: 0, col: 0xf9a8d4 },
@@ -183,14 +187,14 @@ function makeCake() {
   ];
 
   tiers.forEach((t, ti) => {
-    const mat = new THREE.MeshStandardMaterial({ color: t.col, roughness: 0.3, metalness: 0.2, });
+    const mat = new THREE.MeshToonMaterial({ color: t.col, });
     const body = new THREE.Mesh(new THREE.CylinderGeometry(t.r, t.r * 1.01, t.h, 64), mat);
     body.position.y = t.y + t.h / 2;
     body.castShadow = true;
     body.receiveShadow = true;
     cakeGroup.add(body);
 
-    const topMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(t.col).multiplyScalar(1.12), roughness: 0.3, metalness: 0.2, });
+    const topMat = new THREE.MeshToonMaterial({ color: new THREE.Color(t.col).multiplyScalar(1.12), });
     const top = new THREE.Mesh(new THREE.CircleGeometry(t.r, 64), topMat);
     top.rotation.x = -Math.PI / 2;
     top.position.y = t.y + t.h;
@@ -211,7 +215,7 @@ function makeCake() {
       const a = (r / (8 + ti * 2)) * Math.PI * 2;
       const ros = new THREE.Mesh(
         new THREE.SphereGeometry(0.065, 10, 10),
-        new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3, metalness: 0.2, })
+        new THREE.MeshToonMaterial({ color: 0xffffff, })
       );
       ros.position.set(Math.cos(a) * t.r, t.y + t.h * 0.12, Math.sin(a) * t.r);
       ros.scale.set(1, 0.65, 1);
@@ -238,7 +242,7 @@ function makeCake() {
   tiers.slice(1).forEach(t => {
     const plate = new THREE.Mesh(
       new THREE.CylinderGeometry(t.r + 0.04, t.r + 0.04, 0.04, 64),
-      new THREE.MeshStandardMaterial({ color: 0xffd700, roughness: 0.3, metalness: 0.2, emissive: 0x4a3800 })
+      new THREE.MeshToonMaterial({ color: 0xffd700, emissive: 0x4a3800 })
     );
     plate.position.y = t.y;
     cakeGroup.add(plate);
@@ -252,7 +256,7 @@ function makeCake() {
 
   candlePositions.forEach(([cx, cz], i) => {
     const candleGeo = new THREE.CylinderGeometry(0.055, 0.065, 0.45, 16);
-    const candle = new THREE.Mesh(candleGeo, new THREE.MeshStandardMaterial({ color: candleColors[i], roughness: 0.3, metalness: 0.2, }));
+    const candle = new THREE.Mesh(candleGeo, new THREE.MeshToonMaterial({ color: candleColors[i], }));
     candle.position.set(cx, topY + 0.225, cz);
     candle.castShadow = true;
     cakeGroup.add(candle);
@@ -260,7 +264,7 @@ function makeCake() {
     // Wax top
     const wax = new THREE.Mesh(
       new THREE.SphereGeometry(0.065, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2),
-      new THREE.MeshStandardMaterial({ color: new THREE.Color(candleColors[i]).multiplyScalar(1.3), roughness: 0.3, metalness: 0.2, })
+      new THREE.MeshToonMaterial({ color: new THREE.Color(candleColors[i]).multiplyScalar(1.3), })
     );
     wax.position.set(cx, topY + 0.445, cz);
     cakeGroup.add(wax);
@@ -318,29 +322,29 @@ function makeCake() {
   const starGroup = new THREE.Group();
   const star = new THREE.Mesh(
     new THREE.ExtrudeGeometry(starShape, { depth: 0.025, bevelEnabled: false }),
-    new THREE.MeshStandardMaterial({ color: 0xffd700, roughness: 0.3, metalness: 0.2, emissive: 0x554400 })
+    new THREE.MeshToonMaterial({ color: 0xffd700, emissive: 0x554400 })
   );
   star.position.set(0, topY + 0.22, 0);
   star.rotation.x = -Math.PI / 2;
   starGroup.add(star);
   const stick = new THREE.Mesh(
     new THREE.CylinderGeometry(0.012, 0.012, 0.22, 8),
-    new THREE.MeshStandardMaterial({ color: 0xffd700 })
+    new THREE.MeshToonMaterial({ color: 0xffd700 })
   );
   stick.position.set(0, topY + 0.11, 0);
   starGroup.add(stick);
   cakeGroup.add(starGroup);
 
   // Base board
-  cakeGroup.add(Object.assign(
-    new THREE.Mesh(
-      new THREE.CylinderGeometry(1.75, 1.75, 0.06, 64),
-      new THREE.MeshStandardMaterial({ color: 0xfff8e1, roughness: 0.3, metalness: 0.2, })
-    ), { position: new THREE.Vector3(0, -0.03, 0) }
-  ));
+  const baseBoard = new THREE.Mesh(
+    new THREE.CylinderGeometry(1.75, 1.75, 0.06, 64),
+    new THREE.MeshToonMaterial({ color: 0xfff8e1, })
+  );
+  baseBoard.position.set(0, -0.03, 0);
+  cakeGroup.add(baseBoard);
   const goldRim = new THREE.Mesh(
     new THREE.TorusGeometry(1.75, 0.04, 8, 64),
-    new THREE.MeshStandardMaterial({ color: 0xffd700, roughness: 0.3, metalness: 0.2, })
+    new THREE.MeshToonMaterial({ color: 0xffd700, })
   );
   goldRim.rotation.x = Math.PI / 2;
   cakeGroup.add(goldRim);
@@ -357,6 +361,8 @@ export default function BirthdayScene3D({ onBack }) {
   const [phase, setPhase] = useState('flying'); // flying | arrived | blown | wish
   const [wishText, setWishText] = useState('');
   const [wishSent, setWishSent] = useState(false);
+  const [showStar, setShowStar] = useState(false);
+  const [showFinal, setShowFinal] = useState(false);
 
   // Refs so the animation loop can read the latest values without re-mounting
   const blowRef = useRef(false);
@@ -384,15 +390,15 @@ export default function BirthdayScene3D({ onBack }) {
 
     /* ── Scene ── */
     const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0x060015, 0.012);
-    scene.background = new THREE.Color(0x040010);
+    scene.fog = new THREE.FogExp2(0x0b162c, 0.015);
+    scene.background = new THREE.Color(0x06112a);
 
     /* ── Camera ── */
     const camera = new THREE.PerspectiveCamera(60, el.clientWidth / el.clientHeight, 0.1, 300);
     camera.position.set(0, 9, 40);
 
     /* ── Base ambient (very dim, moon does the real work) ── */
-    scene.add(new THREE.AmbientLight(0x0a0520, 1.5));
+    scene.add(new THREE.AmbientLight(0x1a2542, 2.0));
 
     /* ── Moon ── */
     const { moonGroup } = makeMoon(scene);
@@ -422,7 +428,7 @@ export default function BirthdayScene3D({ onBack }) {
     }
     tGeo.computeVertexNormals();
     const terrain = new THREE.Mesh(tGeo,
-      new THREE.MeshStandardMaterial({ color: 0x0a1606 })
+      new THREE.MeshToonMaterial({ color: 0x081b22 })
     );
     terrain.receiveShadow = true;
     scene.add(terrain);
@@ -471,7 +477,7 @@ export default function BirthdayScene3D({ onBack }) {
     const hillY = sampleY(0, 0);
     const { cakeGroup, candleData, starGroup } = makeCake();
     candleDataRef.current = candleData;
-    cakeGroup.position.set(0, hillY, 0);
+    cakeGroup.position.set(0, hillY + 0.15, 0);
     scene.add(cakeGroup);
 
     /* ── Camera path ── */
@@ -603,7 +609,30 @@ export default function BirthdayScene3D({ onBack }) {
 
       {/* Bottom gradient overlay */}
       <div className="absolute inset-x-0 bottom-0 h-72 pointer-events-none"
-        style={{ background: 'linear-gradient(to top, rgba(2,0,10,0.92) 0%, transparent 100%)' }} />
+        style={{ background: 'linear-gradient(to top, rgba(5,15,40,0.92) 0%, transparent 100%)' }} />
+
+      {/* Shooting star animation styles */}
+      <style>{`
+        @keyframes shootingStar {
+          0% { transform: translate(0, 0) scale(1); opacity: 1; }
+          70% { transform: translate(300px, -500px) scale(0.5); opacity: 0.8; }
+          100% { transform: translate(500px, -900px) scale(0); opacity: 0; }
+        }
+        @keyframes starTrail {
+          0% { width: 4px; opacity: 0.9; }
+          100% { width: 180px; opacity: 0; }
+        }
+        .shooting-star-anim {
+          animation: shootingStar 2s ease-in forwards;
+        }
+        .star-trail {
+          animation: starTrail 1.5s ease-out forwards;
+        }
+        @keyframes sparkle {
+          0%, 100% { opacity: 0; transform: scale(0); }
+          50% { opacity: 1; transform: scale(1); }
+        }
+      `}</style>
 
       {/* ── Flying hint ── */}
       <AnimatePresence>
@@ -630,7 +659,7 @@ export default function BirthdayScene3D({ onBack }) {
             transition={{ type: 'spring', stiffness: 80, damping: 16, delay: 0.3 }}
             className="absolute inset-0 flex flex-col items-center justify-end pb-10 px-4 pointer-events-none">
             <div className="relative z-10 text-center pointer-events-auto max-w-2xl">
-              <motion.h1 className="text-5xl md:text-7xl font-extrabold mb-1"
+              <motion.h1 className="text-5xl md:text-7xl font-extrabold mb-3"
                 style={{
                   fontFamily: font,
                   background: 'linear-gradient(135deg,#fde68a,#f472b6,#c084fc)',
@@ -640,10 +669,6 @@ export default function BirthdayScene3D({ onBack }) {
                 transition={{ duration: 3, repeat: Infinity }}>
                 ¡Feliz Cumpleaños!
               </motion.h1>
-
-              <motion.div className="text-5xl my-2 select-none"
-                animate={{ y: [0, -12, 0], rotate: [0, 6, -6, 0] }}
-                transition={{ repeat: Infinity, duration: 3.5 }}>🎂</motion.div>
 
               <motion.p className="text-white/85 text-lg md:text-xl font-semibold leading-relaxed mb-5"
                 style={{ fontFamily: font }}
@@ -665,7 +690,7 @@ export default function BirthdayScene3D({ onBack }) {
                   whileTap={{ scale: 0.93 }}
                   animate={{ boxShadow: ['0 0 20px rgba(219,39,119,0.4)', '0 0 45px rgba(219,39,119,0.8)', '0 0 20px rgba(219,39,119,0.4)'] }}
                   transition={{ duration: 2, repeat: Infinity }}>
-                  🕯️ Apagar las velas y pedir un deseo
+                  Apagar las velas y pedir un deseo
                 </motion.button>
               </motion.div>
 
@@ -688,7 +713,7 @@ export default function BirthdayScene3D({ onBack }) {
             <motion.p className="text-white/60 text-sm tracking-[0.3em] font-semibold"
               style={{ fontFamily: font }}
               animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 1.5, repeat: Infinity }}>
-              💨 SOPLANDO...
+              SOPLANDO...
             </motion.p>
           </motion.div>
         )}
@@ -702,6 +727,37 @@ export default function BirthdayScene3D({ onBack }) {
             animate={{ opacity: 1 }}
             className="absolute inset-0 flex items-center justify-center px-4"
             style={{ background: 'rgba(2,0,12,0.75)', backdropFilter: 'blur(6px)' }}>
+
+            {/* Shooting star animation */}
+            {showStar && (
+              <div className="absolute inset-0 pointer-events-none overflow-hidden z-50">
+                <div className="shooting-star-anim" style={{
+                  position: 'absolute', left: '50%', top: '50%',
+                  marginLeft: '-10px', marginTop: '-10px',
+                }}>
+                  <div style={{
+                    width: 20, height: 20, borderRadius: '50%',
+                    background: 'radial-gradient(circle, #fffbe6 0%, #fbbf24 40%, #c084fc 100%)',
+                    boxShadow: '0 0 30px 10px rgba(251,191,36,0.7), 0 0 60px 20px rgba(192,132,252,0.4)',
+                  }} />
+                  <div className="star-trail" style={{
+                    position: 'absolute', top: 8, right: 20, height: 4,
+                    borderRadius: 4,
+                    background: 'linear-gradient(to left, rgba(251,191,36,0.8), rgba(192,132,252,0.3), transparent)',
+                  }} />
+                </div>
+                {/* Sparkle particles */}
+                {[...Array(12)].map((_, i) => (
+                  <div key={i} style={{
+                    position: 'absolute',
+                    left: `${45 + i * 3}%`, top: `${50 - i * 4}%`,
+                    width: 4, height: 4, borderRadius: '50%',
+                    background: i % 2 === 0 ? '#fbbf24' : '#c084fc',
+                    animation: `sparkle ${0.5 + i * 0.15}s ease-in-out ${i * 0.1}s forwards`,
+                  }} />
+                ))}
+              </div>
+            )}
 
             {!wishSent ? (
               <motion.div
@@ -721,12 +777,6 @@ export default function BirthdayScene3D({ onBack }) {
                   </motion.div>
                 ))}
 
-                <motion.div className="text-5xl mb-4 select-none"
-                  animate={{ scale: [1, 1.15, 1], rotate: [0, 5, -5, 0] }}
-                  transition={{ repeat: Infinity, duration: 3 }}>
-                  🌙
-                </motion.div>
-
                 <h2 className="text-3xl md:text-4xl font-extrabold mb-2"
                   style={{
                     fontFamily: font,
@@ -736,7 +786,7 @@ export default function BirthdayScene3D({ onBack }) {
                   ¡Pide tu deseo!
                 </h2>
                 <p className="text-white/60 text-sm mb-6" style={{ fontFamily: font }}>
-                  Las velas se apagaron... el universo está escuchando ✨
+                  Las velas se apagaron... el universo está escuchando
                 </p>
 
                 <textarea
@@ -754,7 +804,17 @@ export default function BirthdayScene3D({ onBack }) {
 
                 <div className="flex gap-3 mt-5 justify-center flex-wrap">
                   <motion.button
-                    onClick={() => setWishSent(true)}
+                    onClick={async () => {
+                      try {
+                        await supabase.from('wishes').insert([{ wish: wishText.trim(), created_at: new Date().toISOString() }]);
+                      } catch (e) { console.error('Supabase error:', e); }
+                      setShowStar(true);
+                      setWishSent(true);
+                      setTimeout(() => {
+                        setShowStar(false);
+                        setShowFinal(true);
+                      }, 2200);
+                    }}
                     disabled={!wishText.trim()}
                     className="px-8 py-3 rounded-full font-extrabold text-white text-base disabled:opacity-40 disabled:cursor-not-allowed"
                     style={{
@@ -764,24 +824,17 @@ export default function BirthdayScene3D({ onBack }) {
                     }}
                     whileHover={wishText.trim() ? { scale: 1.05 } : {}}
                     whileTap={wishText.trim() ? { scale: 0.95 } : {}}>
-                    🌠 Enviar al universo
+                    Enviar al universo
                   </motion.button>
-                  <button onClick={onBack}
-                    className="px-6 py-3 rounded-full border border-white/20 text-white/50 text-sm hover:text-white hover:border-white/50 transition-all"
-                    style={{ fontFamily: font }}>
-                    ← Volver
-                  </button>
+
                 </div>
               </motion.div>
-            ) : (
+            ) : showFinal ? (
               <motion.div
                 initial={{ scale: 0.7, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ type: 'spring', stiffness: 80, damping: 14 }}
                 className="text-center max-w-md px-4">
-                <motion.div className="text-7xl mb-4 select-none"
-                  animate={{ y: [0, -20, 0], rotate: [0, 10, -10, 0] }}
-                  transition={{ repeat: Infinity, duration: 4 }}>⭐</motion.div>
                 <h2 className="text-4xl md:text-5xl font-extrabold mb-3"
                   style={{
                     fontFamily: font,
@@ -791,14 +844,35 @@ export default function BirthdayScene3D({ onBack }) {
                   ¡Deseo enviado!
                 </h2>
                 <p className="text-white/70 text-lg leading-relaxed mb-2" style={{ fontFamily: font }}>
-                  El universo recibió tu deseo.<br />Que se haga realidad muy pronto. 🌌
+                  El universo recibió tu deseo.<br />Que se haga realidad muy pronto.
                 </p>
                 <p className="text-purple-300/80 text-base italic mb-8" style={{ fontFamily: font }}>
                   "{wishText}"
                 </p>
                 <div className="text-3xl md:text-4xl font-extrabold tracking-widest"
                   style={{ fontFamily: font, color: '#fbbf24', textShadow: '0 0 25px rgba(251,191,36,0.7)' }}>
-                  I Purple You 💜
+                  I Purple You
                 </div>
                 <button onClick={onBack}
-                  className="mt-8 px-6 py-2 border border-white/20 text-white/50 rounded-full text-sm hover:text-white hover:border-white/50 transition-
+                  className="mt-8 px-6 py-2 border border-white/20 text-white/50 rounded-full text-sm hover:text-white hover:border-white/50 transition-all"
+                  style={{ fontFamily: font }}>
+                  ← Volver al libro
+                </button>
+              </motion.div>
+            ) : (
+              /* While shooting star plays, show nothing or a subtle text */
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: [0, 0.6, 0] }}
+                transition={{ duration: 2 }}
+                className="text-white/40 text-sm tracking-[0.3em] font-semibold"
+                style={{ fontFamily: font }}>
+                Tu deseo viaja a las estrellas...
+              </motion.p>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
